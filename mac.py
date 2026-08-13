@@ -1,7 +1,7 @@
 import time
 import json
 
-eps=1e-6
+eps=1e-9
 
 def normalize_label(label): # 4
     
@@ -14,13 +14,13 @@ def normalize_label(label): # 4
     return None
 
 
-def mac(pattern, filter): # 5
+def mac(pattern, filters): # 5
     
     score=0.0
     
     for i in range(len(pattern)):
         for j in range(len(pattern[i])):
-            score+=pattern[i][j] * filter[i][j]
+            score+=pattern[i][j] * filters[i][j]
     
     return score
 
@@ -36,13 +36,13 @@ def decide(score_a,score_b,label_a="A",label_b="B"): # 6.1
     return label_b
 
 
-def measure_mac(pattern,filter,repeat=10): # 6.2
+def measure_mac(pattern,filters,repeat=10): # 6.2
     
     total_time=0.0
     
     for _ in range(repeat):
         start_time=time.perf_counter()
-        mac(pattern,filter)
+        mac(pattern,filters)
         end_time=time.perf_counter()
 
         total_time+=end_time-start_time
@@ -82,7 +82,19 @@ def input_matrix(size,title):
             
         print("처음부터 다시 입력해주세요.")
     
+def check_matrix_size(matrix,size):
     
+    if not isinstance(matrix,list):
+        return False
+    
+    if len(matrix)!=size:
+        return False 
+    
+    for row in matrix:
+        if not isinstance(row,list) or len(row)!=size:
+            return False
+        
+    return True
 def user_mode(): # 2
     print("\n#---------------------------------------")
     print("#[1] 필터 입력")
@@ -122,12 +134,12 @@ def normalize_filters(filters):
     
     result={}
     
-    for size,filter in filters.items():
+    for size,filters in filters.items():
         
         size=int(size.replace('size_',''))
         result[size]={}
         
-        for key,value in filter.items():
+        for key,value in filters.items():
             label=normalize_label(key)
             
             if label is not None:
@@ -143,9 +155,9 @@ def performance_analysis(sizes):
     
     for size in sizes:
         pattern=make_zero_matrix(size)
-        filter=make_zero_matrix(size)
+        filters=make_zero_matrix(size)
         
-        average=measure_mac(pattern,filter)
+        average=measure_mac(pattern,filters)
         operation_count=size**2
         print(f"{size}x{size:<5} {average:<5.3f}ms {operation_count:>7}")
         
@@ -175,19 +187,20 @@ def json_mode():
         return
     
     
-    filter=normalize_filters(data.get('filters'))
+    filters_data=data.get('filters')
     pattern=data.get('patterns')
     
-    if not isinstance(filter,dict):
+    if not isinstance(filters_data,dict):
         print("오류: filters 데이터가 존재하지 않거나 형식이 잘못됬습니다.")
         return
     if not isinstance(pattern,dict):
         print("오류: pattern 데이터가 존재하지 않거나 형식이 잘못됬습니다.")
         return
+    filter_m=normalize_filters(filters_data)
     
     for size in [5,13,25]:
         
-        if size in filter and 'Cross' in filter[size] and 'X' in filter[size]:
+        if size in filter_m and 'Cross' in filter_m[size] and 'X' in filter_m[size]:
             print(f"✓ size_{size} 필터 로드 완료 (Cross, X)")
             
         else: print(f"x size_{size} 필터 로드 실패")
@@ -198,9 +211,35 @@ def json_mode():
     
     for key, value in pattern.items():
         size=int((key.split('_'))[1])
-        cross_filter=filter[size].get("Cross")
-        x_filter=filter[size].get("X")
+        cross_filter=filter_m[size].get("Cross")
+        x_filter=filter_m[size].get("X")
+        input_pattern=value['input']
         
+        if not check_matrix_size(input_pattern,size):
+            failed+=1
+            total_test+=1
+            fail_case.append(f'{key}: 패턴 크기 불일치')
+            print(f'---{key}---')
+            print("FAIL: 패턴 크기가 올바르지 않습니다.")
+            continue
+        
+        if not check_matrix_size(cross_filter,size):
+            failed+=1
+            total_test+=1
+            fail_case.append(f'{key}: Cross 필터 크기 불일치')
+            print(f'---{key}---')
+            print("FAIL: Cross 필터 크기가 올바르지 않습니다.")
+            continue
+                
+        if not check_matrix_size(x_filter,size):
+            failed+=1
+            total_test+=1
+            fail_case.append(f'{key}: X 필터 크기 불일치')
+            print(f'---{key}---')
+            print("FAIL: X 필터 크기가 올바르지 않습니다.")
+            continue
+                
+                
         cross_score=mac(value['input'],cross_filter)
         x_score=mac(value['input'],x_filter)
         decided=decide(cross_score,x_score,'Cross','X')
@@ -208,15 +247,19 @@ def json_mode():
         if decided == expected1:
             porf='PASS'
             passed+=1
+        elif decided == 'UNDECIDED':
+            porf='FAIL'
+            failed+=1
+            fail_case.append(f'{key}: 동점(UNDECIDED) 처리 규칙에 따라 FAIL')
         else:
             porf='FAIL'
             failed+=1
-            fail_case.append(f'{key}: 동점(UNDICIDED) 처리 규칙에 따라 FAIL')
+            fail_case.append(f'{key}: 판정 결과 다름 FAIL')
             
             
         total_test+=1
         
-        f
+        
         print(f'---{key}---')
         print(f'Cross 점수{cross_score}')
         print(f'X 점수 {x_score}')
