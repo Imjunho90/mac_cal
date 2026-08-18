@@ -28,13 +28,14 @@ JSON 데이터에서는 같은 의미의 라벨이 서로 다른 문자열로 �
 * x → X
 
 이를 위해 다음과 같이 normalize_label() 함수를 별도로 구현하였다.
-
+~~~bash
 def normalize_label(label):
     if label == '+' or str(label).lower() == 'cross':
         return 'Cross'
     if str(label).lower() == 'x':
         return 'X'
     return None
+~~~
 
 라벨 정규화 기능을 별도의 함수로 분리한 이유는 유지보수성과 확장성을 높이기 위해서이다.
 
