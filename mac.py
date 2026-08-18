@@ -136,7 +136,17 @@ def normalize_filters(filters):
     
     for size,filters in filters.items():
         
-        size=int(size.replace('size_',''))
+        try:
+
+            size=int(size.replace('size_',''))
+
+        except (ValueError, AttributeError):
+
+            continue
+
+        if not isinstance(filters,dict):
+
+            continue
         result[size]={}
         
         for key,value in filters.items():
@@ -185,6 +195,9 @@ def json_mode():
     except OSError as e:
         print(f"파일 열기 오류: {e}")
         return
+    if not isinstance(data,dict):
+        print("오류: data.json의 최상위 구조가 올바르지 않습니다.")
+        return
     
     
     filters_data=data.get('filters')
@@ -210,9 +223,45 @@ def json_mode():
     print("#-------------------------------")
     
     for key, value in pattern.items():
-        size=int((key.split('_'))[1])
-        cross_filter=filter_m[size].get("Cross")
-        x_filter=filter_m[size].get("X")
+        try:
+            parts = key.split('_')
+            size = int(parts[1])
+        except (IndexError, ValueError):
+            failed += 1
+            total_test += 1
+            fail_case.append(f'{key}: 패턴 키 형식 오류')
+
+            print(f'---{key}---')
+            print('FAIL: 패턴 키 형식이 올바르지 않습니다.')
+            continue
+        
+        
+        if size not in filter_m:
+            failed += 1
+            total_test += 1
+            fail_case.append(f'{key}: size_{size} 필터 없음')
+
+            print(f'---{key}---')
+            print(f'FAIL: size_{size} 필터가 존재하지 않습니다.')
+            continue
+
+        cross_filter = filter_m[size].get("Cross")
+        x_filter = filter_m[size].get("X")
+        
+        if not isinstance(value, dict):
+            failed += 1
+            total_test += 1
+            fail_case.append(f'{key}: 패턴 데이터 형식 오류')
+            continue
+
+        if 'input' not in value or 'expected' not in value:
+            failed += 1
+            total_test += 1
+            fail_case.append(f'{key}: input 또는 expected 누락')
+            print(f'---{key}---')
+            print('FAIL: input 또는 expected 값이 없습니다.')
+            continue
+        
         input_pattern=value['input']
         
         if not check_matrix_size(input_pattern,size):
