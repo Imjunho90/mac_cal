@@ -131,7 +131,7 @@ Mode 2는 data.json의 각 테스트 케이스에 존재하는 expected 라벨�
 ## 3. 결과 리포트
 
 ### 3.1 실행 결과
-
+~~~bash
 === Mini NPU Simulator ===
  [모드 선택]
 1. 사용자 입력 (3x3)
@@ -188,8 +188,7 @@ X 점수 0.1
 -size_5_1: 동점(UNDECIDED) 처리 규칙에 따라 FAIL
 -size_13_2: 동점(UNDECIDED) 처리 규칙에 따라 FAIL
 -size_25_1: 동점(UNDECIDED) 처리 규칙에 따라 FAIL
-
-⸻
+~~~
 
 ### 3.2 FAIL 케이스 원인 분석
 
